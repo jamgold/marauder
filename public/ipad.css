@@ -1,0 +1,31 @@
+#overlay {
+	position: absolute;
+	padding: 5px;
+	left: 50px;
+	bottom:10px;
+	width: 400px;
+	height: 300px;
+	z-index: 100;
+	border: 3px solid #bbb;
+	border-radius: 5px;
+	background-color: white;
+}
+div.console_log {
+	display:none;
+	position: absolute;
+	padding: 5px;
+	right: 10px;
+	bottom:10px;
+	width: 400px;
+	height: 20em;
+	z-index: 100;
+	border: 3px solid #bbb;
+	border-radius: 5px;
+	background-color: white;
+}
+div.console_log.active {
+	display:block;
+}
+a.debug.active {
+	font-weight: bold;
+}

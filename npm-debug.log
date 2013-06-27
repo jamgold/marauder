@@ -1,0 +1,59 @@
+0 info it worked if it ends with ok
+1 verbose cli [ '/usr/local/Cellar/node/0.10.10/bin/node',
+1 verbose cli   '/usr/local/bin/npm',
+1 verbose cli   '-g',
+1 verbose cli   'install',
+1 verbose cli   'mongo-livedata' ]
+2 info using npm@1.2.25
+3 info using node@v0.10.10
+4 verbose read json /usr/local/share/npm/lib/package.json
+5 verbose read json /usr/local/share/npm/lib/package.json
+6 verbose cache add [ 'mongo-livedata', null ]
+7 verbose cache add name=undefined spec="mongo-livedata" args=["mongo-livedata",null]
+8 verbose parsed url { protocol: null,
+8 verbose parsed url   slashes: null,
+8 verbose parsed url   auth: null,
+8 verbose parsed url   host: null,
+8 verbose parsed url   port: null,
+8 verbose parsed url   hostname: null,
+8 verbose parsed url   hash: null,
+8 verbose parsed url   search: null,
+8 verbose parsed url   query: null,
+8 verbose parsed url   pathname: 'mongo-livedata',
+8 verbose parsed url   path: 'mongo-livedata',
+8 verbose parsed url   href: 'mongo-livedata' }
+9 silly lockFile b7615f6e-mongo-livedata mongo-livedata
+10 verbose lock mongo-livedata /Volumes/Disk/jhm/.npm/b7615f6e-mongo-livedata.lock
+11 silly lockFile b7615f6e-mongo-livedata mongo-livedata
+12 silly lockFile b7615f6e-mongo-livedata mongo-livedata
+13 verbose addNamed [ 'mongo-livedata', '' ]
+14 verbose addNamed [ null, '' ]
+15 silly lockFile a13b47c2-mongo-livedata mongo-livedata@
+16 verbose lock mongo-livedata@ /Volumes/Disk/jhm/.npm/a13b47c2-mongo-livedata.lock
+17 silly addNameRange { name: 'mongo-livedata', range: '', hasData: false }
+18 verbose url raw mongo-livedata
+19 verbose url resolving [ 'https://registry.npmjs.org/', './mongo-livedata' ]
+20 verbose url resolved https://registry.npmjs.org/mongo-livedata
+21 info trying registry request attempt 1 at 16:10:33
+22 http GET https://registry.npmjs.org/mongo-livedata
+23 http 404 https://registry.npmjs.org/mongo-livedata
+24 silly registry.get cb [ 404,
+24 silly registry.get   { server: 'CouchDB/1.3.0 (Erlang OTP/R15B03)',
+24 silly registry.get     date: 'Fri, 21 Jun 2013 23:10:34 GMT',
+24 silly registry.get     'content-type': 'application/json',
+24 silly registry.get     'content-length': '52',
+24 silly registry.get     'cache-control': 'must-revalidate' } ]
+25 silly lockFile a13b47c2-mongo-livedata mongo-livedata@
+26 silly lockFile a13b47c2-mongo-livedata mongo-livedata@
+27 error 404 'mongo-livedata' is not in the npm registry.
+27 error 404 You should bug the author to publish it
+27 error 404
+27 error 404 Note that you can also install from a
+27 error 404 tarball, folder, or http url, or git url.
+28 error System Darwin 10.8.0
+29 error command "/usr/local/Cellar/node/0.10.10/bin/node" "/usr/local/bin/npm" "-g" "install" "mongo-livedata"
+30 error cwd /Volumes/Disk/jhm/Meteor/marauder
+31 error node -v v0.10.10
+32 error npm -v 1.2.25
+33 error code E404
+34 verbose exit [ 1, true ]

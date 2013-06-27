@@ -1,0 +1,116 @@
+/* CSS declarations go here */
+html,body {
+	height: 100%;
+	margin:0;
+	padding:0;
+}
+
+#marauder_map {
+	width: 100%;
+	height: 100%;
+}
+
+div.topbuttons {
+	position: absolute;
+	padding: 5px;
+	width: 400px;
+	left: 5%;
+	bottom: 10px;
+	height: 6em;
+	border: 3px solid #bbb;
+	border-radius: 5px;
+	background-color: white;
+	opacity:0.5;
+}
+div.topbuttons:hover {
+	opacity:1.0;
+}
+#overlay {
+	position: absolute;
+	padding: 5px;
+	right: 50px;
+	bottom:10px;
+	width: 400px;
+	height: 300px;
+	z-index: 100;
+	border: 3px solid #bbb;
+	border-radius: 5px;
+	background-color: white;
+}
+
+div.loginButtons {
+	float: right;
+	font-size: 20px;
+	padding-right: 5px;
+}
+
+div.reactive-hidden {
+	display: none;
+}
+
+div.button-toggles {
+	
+}
+input.pressed {
+	background-color: red;
+}
+/*#login-dropdown-list {
+	position: relative;
+	left: 10px;
+	top: 2px;
+}*/
+.error {
+	color: red;
+}
+div.console_log {
+	display:none;
+	position: absolute;
+	padding: 5px;
+	right: 10px;
+	top:40px;
+	width: 400px;
+	height: 20em;
+	z-index: 100;
+	border: 3px solid #bbb;
+	border-radius: 5px;
+	background-color: white;
+}
+div.console_log.active {
+	display:block;
+}
+div.links {
+	position: absolute;
+	bottom: 5px;
+}
+ul.friends {
+	overflow: auto;
+	height: 7em;
+	overflow: auto;
+	padding:0 20px;
+	margin:0;
+	font-size: 12px;
+}
+ul.friends li {
+	line-height: 12px;
+}
+ul.console_log {
+	border: 1px solid #aaa;
+	font-size: 10px;
+	overflow: auto;
+	height: 95%;
+	margin: 10px 0;
+}
+ul.console_log li {
+	margin:0;
+	line-height: 10px;
+}
+a.debug.active {
+	font-weight: bold;
+}
+.btn-group > .btn {
+	font-size: 10px;
+}
+label.tracking {
+    display: inline-block;
+    margin-left: 5px;
+}
