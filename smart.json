@@ -1,8 +1,6 @@
 {
   "packages": {
-    "presence": {},
     "jquery-ui-bootstrap": {},
-    "event-hooks": {},
     "user-status": {}
   }
 }

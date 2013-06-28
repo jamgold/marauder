@@ -8,6 +8,7 @@ if(debug !== null) Marauder.debug = true;
 
 _.extend(Marauder, {
   timestamp: new Date(),
+  mc: null,
   markers: {
     myself: undefined,
     selected: undefined,
@@ -357,6 +358,8 @@ Template.marauder.rendered = function() {
 
     Marauder.setMap( new google.maps.Map(document.getElementById('marauder_map'), mapOptions) );
 
+    Marauder.mc = new MarkerClusterer(Marauder.map);
+    
     google.maps.event.addListener(Marauder.map, 'dragend', function() {
         // 3 seconds after the center of the map has changed, pan back to the marker.
         Marauder.debugString("dragend");
@@ -750,4 +753,9 @@ Meteor.users.find().observeChanges({
       Session.set('message','');
     }
   }
+});
+
+Meteor.startup(function(){
+ if(localStorage.getItem('tracking') === null)
+    localStorage.setItem('tracking', false)
 });

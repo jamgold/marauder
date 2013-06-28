@@ -1,36 +1,20 @@
 {
-  "meteor": {
-    "git": "https://github.com/meteor/meteor.git",
-    "branch": "master",
-    "commit": "9bb2b5447e845c4f483df5e9b42a2c1de5ab909b"
-  },
+  "meteor": {},
   "dependencies": {
     "basePackages": {
-      "presence": {},
       "jquery-ui-bootstrap": {},
-      "event-hooks": {},
       "user-status": {}
     },
     "packages": {
-      "presence": {
-        "git": "https://github.com/tmeasday/meteor-presence.git",
-        "tag": "v0.2.0",
-        "commit": "cb103275ba67e524bf3a9cce4ff0b36f03959d1b"
-      },
       "jquery-ui-bootstrap": {
         "git": "https://github.com/TimHeckel/meteor-jquery-ui-bootstrap.git",
         "tag": "v0.1.2",
         "commit": "fa742a85639307003e105898e15b631394b63509"
       },
-      "event-hooks": {
-        "git": "https://github.com/BenjaminRH/meteor-event-hooks.git",
-        "tag": "v1.4.0",
-        "commit": "8d0daf1b84622104d3bcdd99fcf791cd08d3a222"
-      },
       "user-status": {
         "git": "https://github.com/mizzao/meteor-user-status.git",
-        "tag": "v0.1.0",
-        "commit": "64e7fb9696bacdfb7fca37c7ca6af0d1fd45688b"
+        "tag": "v0.1.2",
+        "commit": "8bc5b366abeb918eb2c36c40aae8862482829e18"
       },
       "jquery-ui": {
         "git": "https://github.com/TimHeckel/meteor-jquery-ui.git",
