@@ -10,38 +10,51 @@ html,body {
 	height: 100%;
 }
 
-div.topbuttons {
-	position: absolute;
-	padding: 5px;
-	width: 400px;
-	left: 5%;
-	bottom: 10px;
-	height: 6em;
+.top_of_map {
+	position: absolute;	
 	border: 3px solid #bbb;
 	border-radius: 5px;
 	background-color: white;
+	z-index: 100;
+}
+div.topbuttons {
+	padding: 5px;
+/*	width: 400px;
+	height: 8em;
+*/	left: 10px;
+	top: 10px;
 	opacity:0.5;
 }
 div.topbuttons:hover {
 	opacity:1.0;
 }
+div.topbuttons .btn-group {
+	white-space: normal;
+}
+modal {
+	/*display:none;*/
+	left:25%;
+	top:15%;
+	padding:1em;
+	width:50%;
+	/*text-align: center;*/
+}
 #overlay {
-	position: absolute;
 	padding: 5px;
 	right: 50px;
 	bottom:10px;
 	width: 400px;
-	height: 300px;
-	z-index: 100;
-	border: 3px solid #bbb;
-	border-radius: 5px;
-	background-color: white;
+	height: 350px;
 }
 
 div.loginButtons {
-	float: right;
-	font-size: 20px;
+	float: left;
+	font-size: 12px;
 	padding-right: 5px;
+}
+
+div.login-link-and-dropdown-list {
+	font-size: 12px;
 }
 
 div.reactive-hidden {
@@ -62,50 +75,17 @@ input.pressed {
 .error {
 	color: red;
 }
-div.console_log {
-	display:none;
-	position: absolute;
-	padding: 5px;
-	right: 10px;
-	top:40px;
-	width: 400px;
-	height: 20em;
-	z-index: 100;
-	border: 3px solid #bbb;
-	border-radius: 5px;
-	background-color: white;
-}
-div.console_log.active {
-	display:block;
-}
+
 div.links {
 	position: absolute;
 	bottom: 5px;
 }
-ul.friends {
+div.friends {
 	overflow: auto;
-	height: 7em;
-	overflow: auto;
-	padding:0 20px;
-	margin:0;
+	height: 200px;
+	/*padding:0 20px;*/
+	/*margin:0;*/
 	font-size: 12px;
-}
-ul.friends li {
-	line-height: 12px;
-}
-ul.console_log {
-	border: 1px solid #aaa;
-	font-size: 10px;
-	overflow: auto;
-	height: 95%;
-	margin: 10px 0;
-}
-ul.console_log li {
-	margin:0;
-	line-height: 10px;
-}
-a.debug.active {
-	font-weight: bold;
 }
 .btn-group > .btn {
 	font-size: 10px;
@@ -113,4 +93,7 @@ a.debug.active {
 label.tracking {
     display: inline-block;
     margin-left: 5px;
+}
+a.updateFriends {
+	font-size: 11px;
 }

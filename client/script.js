@@ -1,13 +1,20 @@
+//
+// http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/docs/reference.html
+// http://mapicons.nicolasmollet.com/category/markers/friends-family
+//
 var onlineCount = 0;
 
 Session.setDefault('onlineCount', onlineCount);
 Session.setDefault('message', '');
-
-var debug = localStorage.getItem('debug');
-if(debug !== null) Marauder.debug = true;
+Session.setDefault('showModal', false);
+Session.setDefault('mode', 'home');
+Session.setDefault('loggedIn', false);
+Session.setDefault('tracking', false);
 
 _.extend(Marauder, {
+  debug: localStorage.getItem('debug') == 'true' ? true: false,
   timestamp: new Date(),
+  moveMap2MyselfRunning: false,
   mc: null,
   markers: {
     myself: undefined,
@@ -15,48 +22,110 @@ _.extend(Marauder, {
     infowindow: {},
     friends: {}
   },
+  toggleDebug: function() {
+    var self = this;
+    self.debug = ! self.debug;
+    localStorage.setItem('debug', false);
+  },
+  setCenter: function(c, caller) {
+    caller = caller || "";
+    var self = this;
+    // console.log(caller+' setCenter '+c);
+    self.map.setCenter(c);
+  },
+  setZoom: function(z) {
+    var self = this;
+    // console.log('setZoom '+z);
+    self.map.setZoom(z);
+  },
+  activeModeDescription: function(mode) {
+    var self = this;
+    mode = mode || self.mode();
+    var tracking = Session.get('tracking');
+
+    var desc = mode+' is an unknown mode';
+    switch(mode)
+    {
+      case 'home':
+        desc = 'Moved the map to where you are (or where you marker sits)';
+        if(tracking)
+          desc+= '<br>We will also update your location based on your browser&#39;s geo location';
+        else
+          desc+= '<br>Drag your marker to where you want it to appear for your friends to see';
+      break;
+      case 'friends':
+        desc = 'Showing all your online friends on the map';
+        if(!tracking) desc+= '<br>Drag your marker to where you want it to appear for your friends to see';
+      break;
+      case 'browsing':
+        desc = 'Browsing around on the map';
+        if(!tracking) desc+= '<br>Drag your marker to where you want it to appear for your friends to see';
+        if(!Meteor.userId()) desc+='<br>To see anything you need to login and add friends.';
+      break;
+      case 'specify':
+        desc = 'Drag your marker to where you want it to appear for your friends to see, or click on the map to set your location';
+      break;
+    }
+    return desc;
+  },
   mode: function(mode) {
     var self = this;
-    // if(Meteor.userId() === null)
-    //   mode = 'home';
-
     if(mode === undefined)
     {
       mode = localStorage.getItem('mode');
       var valid_modes = ['home','specify','friends','browsing'];
       if(!Meteor.userId() ) valid_modes = ['home','browsing' ];
-      if(mode === null || $.inArray(mode, valid_modes) <=0 )
+      if(mode === null || $.inArray(mode, valid_modes) < 0 )
       {
+        Session.set('message',mode+' invalid '+valid_modes);
         mode = 'home';
         localStorage.setItem('mode', mode);
+        Session.set('mode', mode);
+        Session.set("activeModeDescription", self.activeModeDescription(mode) );
+        self.showModal();
       }
       return mode;
     }
     else
     {
-      localStorage.setItem('mode', mode);
-      self.debugString("set mode to "+mode);
-      if(mode == 'specify')
-        Marauder.map.setOptions({draggableCursor:'crosshair'});
-      else
-        Marauder.map.setOptions({draggableCursor:'default'});
-      Session.set('activeModeDescription',new Date().getTime());
+      var oldmode = localStorage.getItem('mode');
+      if(oldmode != mode)
+      {
+        localStorage.setItem('mode', mode);
+        self.log("set mode to "+mode);
+
+        if(mode == 'specify')
+          Marauder.map.setOptions({draggableCursor:'crosshair'});
+        else
+          Marauder.map.setOptions({draggableCursor:'default'});
+
+        Session.set('mode', mode);
+        Session.set("activeModeDescription", self.activeModeDescription(mode) );
+        self.showModal();
+      }
     }
+  },
+  showModal: function() {
+    // console.log('show modal');
+    Session.set('showModal', true);
   },
   setItems: function(map) {
     var self = this;
-    var c = map.getCenter();
-    var b = map.getBounds();
-    var zoom = map.getZoom();
-    var mode = self.mode();
-    localStorage.setItem('zoomLevel', zoom);
-    localStorage.setItem('center', JSON.stringify(c));
-    localStorage.setItem('boundary', JSON.stringify({ne: b.getNorthEast(), sw: b.getSouthWest()}));
-    // if(mode != 'specify' && mode != 'friends') self.mode('browsing');
-    Session.set('updated', new Date().getTime());
+    if(!self.moveMap2MyselfRunning)
+    {
+      var c = map.getCenter();
+      var b = map.getBounds();
+      var zoom = map.getZoom();
+      var mode = self.mode();
+      localStorage.setItem('zoomLevel', zoom);
+      localStorage.setItem('center', JSON.stringify(c));
+      localStorage.setItem('boundary', JSON.stringify({ne: b.getNorthEast(), sw: b.getSouthWest()}));
+      // if(mode != 'specify' && mode != 'friends') self.mode('browsing');
+      Session.set('updated', new Date().getTime());
+    }
   },
   getUserName: function(friend) {
-    // Marauder.debugString(friend);
+    // Marauder.log(friend);
     if(friend.emails !== undefined && friend.emails.length>0)
       return friend.emails[0].address;
     else
@@ -68,7 +137,7 @@ _.extend(Marauder, {
         return new google.maps.LatLng(Marauder.R2D(location.coordinates[1]),Marauder.R2D(location.coordinates[0]));
       else return undefined;
     } catch (e) {
-      Marauder.debugString(e);
+      Marauder.log(e);
     }
   },
   bounceMarker: function(id) {
@@ -80,31 +149,27 @@ _.extend(Marauder, {
     }
     if(id !== undefined && self.markers.friends[id] !== undefined)
     {
-      console.log("bouncing "+id);
       self.markers.selected = self.markers.friends[id];
       self.markers.selected.setAnimation(google.maps.Animation.BOUNCE);
       Meteor.setTimeout(function(){
         self.markers.selected.setAnimation(null);
         self.markers.selected = undefined;
-      }, 4000);
+      }, 1500);
     }
   },
   showClickedUser: function(){
-      // console.log(this);
       Marauder.markers.selected = this;
-      var m = Session.get('message');
+      // var m = Session.get('message');
       var t = this.getTitle();
-      if(m != t)
-        Session.set('message', t);
-      else
-        Session.set('message', '');
-      // Marauder.markers.infowindow[user._id].open(Marauder.map, this);
+      Session.set('message', 'Clicked user '+t+' <button class="btn stalk">Stalk</button>');
+
+      Marauder.showModal();
   },
   updateFriends: function(who) {
     var self = this;
     if(self.map !== undefined)
     {
-      self.debugString("Marauder.updateFriends from "+who);
+      self.log("Marauder.updateFriends from "+who);
       var visibleMarkers = {};
       var uid = Meteor.userId();
       Meteor.users.find().forEach(function(user){
@@ -117,16 +182,17 @@ _.extend(Marauder, {
           // do we have a marker already
           if(self.markers.friends[user._id] === undefined)
           {
-            self.debugString('add marker for '+userName);
+            self.log('add marker for '+userName);
             var c = self.userLatLng(user.location);
             self.markers.friends[user._id] = new google.maps.Marker({
                 position: c,
                 animation: google.maps.Animation.DROP,
                 draggable: false,
                 map: self.map,
-                icon: 'friend.png',
+                icon: user.profile.online ? 'friend.png' : 'offline.png',
                 title: userName+' '+user._id
             });
+            self.mc.addMarker(self.markers.friends[user._id]);
             // if(self.markers.infowindow[user._id] === undefined)
             //   self.markers.infowindow[user._id] = new google.maps.InfoWindow({
             //       content: userName+'<br>'+user._id
@@ -136,31 +202,34 @@ _.extend(Marauder, {
           }
           else
           {
-            // self.debugString('update marker for '+userName);
+            // self.log('update marker for '+userName);
             self.markers.friends[user._id].setPosition(self.userLatLng(user.location));
+            self.markers.friends[user._id].setIcon(user.profile.online ? 'friend.png' : 'offline.png');
           }
         }
         else
         {
-            if(Marauder.markers.friends[user._id] !== undefined)
+            if(self.markers.friends[user._id] !== undefined)
             {
-                Marauder.markers.friends[user._id].setMap(null);
-                delete(Marauder.markers.friends[user._id]);
-                self.debugString("Marauder.updateFriends removed myself from friends");
+                self.mc.removeMarker(self.markers.friends[user._id]);
+                self.markers.friends[user._id].setMap(null);
+                delete(self.markers.friends[user._id]);
+                self.log("Marauder.updateFriends removed myself from friends");
             }
         }
       });
 
       if(localStorage.getItem('clearInvisibleMarkers') !== null)
       {
-        // Marauder.debugString(visibleMarkers);
+        // Marauder.log(visibleMarkers);
         for(var f in self.markers.friends)
         {
           if(visibleMarkers[f] === undefined)
           {
+            self.mc.removeMarker(self.markers.friends[f]);
             self.markers.friends[f].setMap(null);
             delete(self.markers.friends[f]);
-            self.debugString("updateFriends removed "+f);
+            self.log("updateFriends removed "+f);
           }
         }
       }
@@ -169,7 +238,7 @@ _.extend(Marauder, {
         self.markers.myself.setTitle('Myself');
     }
   },
-  control: function (controlDiv, map) {
+  marauderMapControl: function (controlDiv, map) {
     // Set CSS styles for the DIV containing the control
     // Setting padding to 5 px will offset the control
     // from the edge of the map
@@ -193,7 +262,7 @@ _.extend(Marauder, {
     controlText.style.fontSize = '12px';
     controlText.style.paddingLeft = '4px';
     controlText.style.paddingRight = '4px';
-    controlText.innerHTML = '<b>Marauders <span id="onlineCount">'+Session.get('onlineCount')+'</span></b>';
+    controlText.innerHTML = '<b><span id="onlineCount">'+Session.get('onlineCount')+'</span> Marauders</b>';
     controlText.id = "marauderControlText";
     controlUI.appendChild(controlText);
 
@@ -201,16 +270,14 @@ _.extend(Marauder, {
     google.maps.event.addDomListener(controlUI, 'click', function() {
       if($('#overlay').is(':visible'))
       {
-        $('#overlay').fadeOut(1000,function(){
-          localStorage.setItem('overlay', false);
-        });
+        $('#overlay').hide();
+        localStorage.setItem('overlay', false);
         $("#marauderControlText").css("color","black");
       }
       else
       {
-        $('#overlay').fadeIn(1000, function(){
-          localStorage.setItem('overlay', true);
-        });
+        $('#overlay').show();
+        localStorage.setItem('overlay', true);
         $("#marauderControlText").css("color","#aaa");
       }
     });
@@ -220,40 +287,14 @@ _.extend(Marauder, {
     coordinates = coordinates || self.markers.myself.getPosition();
     if(self.markers.myself)
     {
-      // self.moveMap2MyselfRunning = true;
-      console.log('move map to myself');
-      self.map.setCenter( coordinates );
-      self.map.setZoom(12);
+      self.moveMap2MyselfRunning = true;
+      self.setCenter( coordinates , 'moveMap2Myself');
+      self.setZoom(18);
+      self.moveMap2MyselfRunning = false;
     }
   },
-  updateMyself: function(coordinates, timestamp) {
+  updateMyMarker: function(coordinates, title) {
     var self = this;
-    var title = 'Myself ';
-    if(coordinates === undefined) coordinates = self.markers.myself.getPosition();
-    if(timestamp === undefined) timestamp = new Date().getTime();
-    if(Meteor.user())
-    {
-      var user = Meteor.user();
-      var uid = Meteor.userId();
-      var coords = [ Marauder.D2R(coordinates.lng()), Marauder.D2R(coordinates.lat()) ];
-      Meteor.users.update({_id: uid},{
-        $set:{
-          timestamp: timestamp,
-          mode: self.mode(),
-          location: {
-            type: 'Point',
-            coordinates: coords
-          }
-        }
-      });
-
-      title+=uid;
-    }
-    else
-    {
-      title+=' anon';
-    }
-    localStorage.setItem('timestamp', timestamp);
     if(self.markers.myself)
     {
       self.markers.myself.setPosition(coordinates);
@@ -273,16 +314,57 @@ _.extend(Marauder, {
       google.maps.event.addListener(Marauder.markers.myself, 'dragend', function(event) {
           Marauder.updateMyself(event.latLng, new Date().getTime());
       });
-    }
 
+      self.mc.addMarker(self.markers.myself);
+    }
+    if(Session.get('tracking'))
+      self.markers.myself.setOptions({draggable: false});
+    else
+      self.markers.myself.setOptions({draggable: true});
+
+    if(!Meteor.user())
+    {
+      self.moveMap2Myself(self.markers.myself.getPosition());
+    }
+  },
+  updateMyself: function(coordinates, timestamp) {
+    var self = this;
+    var title = 'Myself ';
+    var user = Meteor.user();
+    if(coordinates === undefined) coordinates = self.markers.myself.getPosition();
+    if(timestamp === undefined) timestamp = new Date().getTime();
+    if(user)
+    {
+      var uid = user._id;
+      var coords = [ Marauder.D2R(coordinates.lng()), Marauder.D2R(coordinates.lat()) ];
+      Meteor.users.update({_id: uid},{
+        $set:{
+          timestamp: timestamp,
+          mode: self.mode(),
+          location: {
+            type: 'Point',
+            coordinates: coords
+          }
+        }
+      });
+
+      title+=uid;
+    }
+    else
+    {
+      title+=' anon';
+    }
+    localStorage.setItem('timestamp', timestamp);
+
+    self.updateMyMarker(coordinates, title);
   },
   updateLocation: function () {
     var self = this;
-    var tracking = localStorage.getItem('tracking');
-    if(Meteor.userId() === null || tracking == "checked")
+    var tracking = Session.get('tracking');
+    if(Meteor.userId() === null || tracking)
     {
-      console.log("updateLocation tracking "+tracking);
-      if(navigator.geolocation && self.mode() != 'specify')
+      self.log('getting geo location');
+      if(navigator.geolocation)
       {
         navigator.geolocation.getCurrentPosition(function(position) {
           var o = localStorage.getItem('home');
@@ -291,15 +373,15 @@ _.extend(Marauder, {
           {
             var c = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
             localStorage.setItem('home', JSON.stringify(c));
-            Marauder.debugString('new home '+position.timestamp+' old '+t);
+            Marauder.log('new home '+position.timestamp+' old '+t);
             self.updateMyself(c, position.timestamp);
           }
         }, function() {
           // San Francisco
-          Marauder.debugString('getCurrentPosition failed, setting San Francisco');
+          Session.set('message','getCurrentPosition failed, setting San Francisco');
+          Marauder.showModal();
           var sf = new google.maps.LatLng( 37.998867291789836, -122.20487600000001 );
           self.updateMyself(sf, new Date().getTime());
-          console.log(position);
         });
       }
       // Browser doesn't support Geolocation
@@ -307,42 +389,43 @@ _.extend(Marauder, {
       {
         // San Francisco
         Session.set('message','Browser does not suppport Geolocation');
+        Marauder.showModal();
         self.updateMyself(new google.maps.LatLng( 37.998867291789836, -122.20487600000001 ) , new Date().getTime());
       }
     }
-  }
-});
-
-Marauder.debugString('Marauder extended: '+Marauder.timestamp);
-
-Template.marauder.rendered = function() {
-  Marauder.debugString('Template.marauder.rendered');
-
-  var center = localStorage.getItem('center');
-  var home = localStorage.getItem('home');
-  var weHaveNoCenter = false;
-
-  if(Marauder.map === undefined)
-  {
+  },
+  initialize: function() {
+    var self = this;
+    var center = localStorage.getItem('center');
+    var home = localStorage.getItem('home');
     var zoom = localStorage.getItem('zoomLevel');
+    var weHaveNoCenter = false;
     if(zoom === null) zoom = 12;else zoom=parseInt(zoom,10);
     if(zoom < 2) zoom = 12;
-    if(center === null)
+    if(!center)
     {
       center = new google.maps.LatLng( 37.7701371389949, -122.41666322381593 );
       // we have no center, so make sure we go into track mode
-      Marauder.debugString('we have no center');
+      self.log('we have no center');
       weHaveNoCenter = true;
     }
     else
     {
-      var c = JSON.parse(center);
-      center = new google.maps.LatLng( c['jb'], c['kb'] );
+      try{
+        var c = JSON.parse(center);
+        center = new google.maps.LatLng( c['jb'], c['kb'] );
+      } catch(e) {
+        center = new google.maps.LatLng( 37.7701371389949, -122.41666322381593 );
+      }
     }
-    if(home === null) home = center;
+    if(!home) home = center;
     else {
-      var h = JSON.parse(home);
-      home = new google.maps.LatLng( h['jb'], h['kb'] );
+      try {
+        var h = JSON.parse(home);
+        home = new google.maps.LatLng( h['jb'], h['kb'] );
+      } catch(e) {
+        home = center;
+      }
     }
 
     var mapOptions = {
@@ -356,140 +439,179 @@ Template.marauder.rendered = function() {
           }
     };
 
-    Marauder.setMap( new google.maps.Map(document.getElementById('marauder_map'), mapOptions) );
+    self.setMap( new google.maps.Map(document.getElementById('marauder_map'), mapOptions) );
 
-    Marauder.mc = new MarkerClusterer(Marauder.map);
-    
-    google.maps.event.addListener(Marauder.map, 'dragend', function() {
+    var styles = [{
+      url: 'group.png',
+      height: 35,
+      width: 35,
+      opt_anchor: [16, 0],
+      opt_textColor: '#ff00ff',
+      opt_textSize: 10
+    }];
+
+    self.mc = new MarkerClusterer(self.map,[], {gridSize: 50, maxZoom: 17, styles: styles});
+
+    google.maps.event.addListener(self.map, 'dragend', function() {
         // 3 seconds after the center of the map has changed, pan back to the marker.
-        Marauder.debugString("dragend");
-        Marauder.setItems(this);
-        if( Marauder.mode() == 'home') Marauder.mode('browsing');
+        self.log("dragend");
+        if(!self.moveMap2MyselfRunning)
+        {
+          var mode = self.mode();
+          self.setItems(this);
+          if( mode == 'home' || mode == 'friends') self.mode('browsing');
+        }
     });
 
-    google.maps.event.addListener(Marauder.map, 'zoom_changed', function() {
-        Marauder.debugString("zoomed "+ zoom);
-        Marauder.setItems(this);
-        if( Marauder.mode() == 'home') Marauder.mode('browsing');
+    google.maps.event.addListener(self.map, 'zoom_changed', function() {
+        self.log("zoomed "+ zoom);
+        if(! self.moveMap2MyselfRunning)
+        {
+          var mode = self.mode();
+          self.setItems(this);
+          if( mode == 'home' || mode == 'friends' ) self.mode('browsing');
+        }
     });
 
-    google.maps.event.addListener(Marauder.map, 'idle', function() {
+    google.maps.event.addListener(self.map, 'idle', function() {
       if(weHaveNoCenter)
       {
         $('div.button-toggles input.home').click();
       }
     });
 
-    google.maps.event.addListener(Marauder.map, 'click', function(event) {
-      if(Marauder.mode() == 'specify')
-      {
-        Marauder.updateMyself(event.latLng, new Date().getTime());
-      }
-    });
+    // google.maps.event.addListener(self.map, 'click', function(event) {
+    //   if(!Session.get('tracking') && Marauder.mode() == 'browsing')
+    //   {
+    //     self.updateMyself(event.latLng, new Date().getTime());
+    //     self.mc.repaint();
+    //   }
+    // });
 
     var controlDiv = document.createElement('div');
-    var control = new Marauder.control(controlDiv, Marauder.map);
+    var control = new self.marauderMapControl(controlDiv, self.map);
     controlDiv.index = 1;
 
-    Marauder.map.controls[google.maps.ControlPosition.TOP_RIGHT].push(controlDiv);
+    self.map.controls[google.maps.ControlPosition.TOP_RIGHT].push(controlDiv);
 
-    Marauder.updateMyself(home, new Date().getTime());
+    self.updateMyself(home, new Date().getTime());
 
-    if(Marauder.mode() == 'specify')
-      Marauder.markers.myself.setOptions({draggable: true});
-    if(Marauder.mode() == 'home')
-      Marauder.updateLocation();
+    if(self.mode() == 'home')
+      self.updateLocation();
+  }
+});
+
+Marauder.log('Marauder extended: '+Marauder.timestamp);
+
+Template.marauder.loggedIn = function() {
+  //
+  Marauder.log('Template.marauder.loggedIn');
+  return Session.get('loggedIn');
+};
+
+Template.buttons.currentmode = function() {
+  //
+  return Session.get('mode');
+};
+
+Template.marauder.showModal = function() {
+  //
+  return Session.get('showModal');
+};
+
+Template.marauder.rendered = function() {
+  var user = Meteor.user();
+
+  if(Marauder.map === undefined)
+  {
+    Marauder.log('Template.marauder.rendered initialize');
+
+    Marauder.initialize();
+    Marauder.updateFriends('Template.marauder.rendered');
   }
   else
   {
-    var c1 = JSON.parse(center);
-    if(c1 !== null && c1['jb'] !== undefined && Marauder.map !== null)
-      Marauder.map.setCenter( new google.maps.LatLng( c1['jb'], c1['kb'] ) );
-    else Marauder.updateLocation();
+    Marauder.log('Template.marauder.rendered rerun');
+
+    if(Session.get('tracking'))
+      Marauder.markers.myself.setOptions({draggable: false});
+    else
+      Marauder.markers.myself.setOptions({draggable: true});
+
+    // var c1 = JSON.parse(center);
+    // if(c1 !== null && c1['jb'] !== undefined && Marauder.map !== null)
+    //   Marauder.setCenter( new google.maps.LatLng( c1['jb'], c1['kb'] ), 'marauder.render' );
+    // else Marauder.updateLocation();
     if(Marauder.mode() == 'home') Marauder.moveMap2Myself();
   }
-
-  Marauder.updateFriends('Template.marauder.rendered');
-
-  // Marauder.debugString(this);
-  var user = Meteor.user();
-  if(false && user !== null)
-  {
-    try {
-      if(user.username !== 'admin')
-      {
-        // Marauder.debugString(user.emails[0]);
-        if(user.emails[0].verified)
-        {
-          return "Welcome to Marauder "+user.username;
-        }
-        else
-        {
-            if( user.services.email.verificationTokens.length === 0 )
-            {
-              Meteor.call('sendVerificationEmail', Meteor.userId(), user.emails[0].address);
-            }
-            Meteor.logout();
-            alert('Your account has not been verified yet, we sent you an e-mail to '+user.emails[0].address);
-          return user.emails[0].address+' is not verified';
-        }
-      }
-    } catch(e) {
-      Marauder.debugString(e);
-    }
-  }
+  // Marauder.updateFriends('Template.marauder.rendered');
+  // Marauder.log(this);
+  // if(false && user !== null)
+  // {
+  //   try {
+  //     if(user.username !== 'admin')
+  //     {
+  //       // Marauder.log(user.emails[0]);
+  //       if(user.emails[0].verified)
+  //       {
+  //         return "Welcome to Marauder "+user.username;
+  //       }
+  //       else
+  //       {
+  //           if( user.services.email.verificationTokens.length === 0 )
+  //           {
+  //             Meteor.call('sendVerificationEmail', Meteor.userId(), user.emails[0].address);
+  //           }
+  //           Meteor.logout();
+  //           alert('Your account has not been verified yet, we sent you an e-mail to '+user.emails[0].address);
+  //         return user.emails[0].address+' is not verified';
+  //       }
+  //     }
+  //   } catch(e) {
+  //     Marauder.log(e);
+  //   }
+  // }
 };
 
-Template.marauder.debugActive = function() {
-  var a = Session.get('debug');
-  return a ? "active" : "";
-};
-
-Template.marauder.friends = function() {
+Template.friends.friends = function() {
   var updated = Session.get('updated');
-  Marauder.debugString('Template.marauder.friends');
+  Marauder.log('Template.friends.friends');
   Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
     if(err === undefined && friends.length>0)
     {
       Session.set('friends', friends);
-      // Marauder.updateFriends('Template.marauder.friends');
+      // Marauder.updateFriends('Template.friends.friends');
     }
   });
-
   return Session.get('friends');
+  // var friends = [];
+  // var uid = Meteor.userId();
+  // Meteor.users.find().forEach(function(friend){
+  //   if(friend._id != uid)
+  //     friends.push(friend);
+  // });
+  // return friends;
 };
 
-Template.buttons.message = function() {
+Template.friends.message = function() {
+  //
+  return Session.get('friendRequestMessage');
+};
+
+Template.friends.requests = function() {
+  //
+  return Requests.find();
+};
+
+Template.modal.message = function() {
+  var t = Session.get("tracking");
   var x = Session.get('activeModeDescription');
   return Session.get('message');
 };
 
-// Template.buttons.rendered = function() {
-//   return Session.get('activeModeDescription');
-// };
-
-Template.buttons.helpers({
-  activeModeDescription: function() {
-    var mode = Marauder.mode();
-    var desc = mode+' is an unknown mode';
-    switch(mode)
-    {
-      case 'home':
-        desc = 'Using your browser\'s/device\'s location to have marauder track you';
-      break;
-      case 'friends':
-        desc = 'Showing all your online friends on the map';
-      break;
-      case 'browsing':
-        desc = 'Browsing around on the map';
-      break;
-      case 'specify':
-        desc = 'Drag your marker to where you want it to appear for your friends to see, or click on the map to set your location';
-      break;
-    }
-    return desc;
-  }
-});
+Template.modal.activeModeDescription = function() {
+  return Session.get('activeModeDescription');
+};
 
 Template.onlineCounter.onlineCount = function() {
   Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
@@ -497,8 +619,6 @@ Template.onlineCounter.onlineCount = function() {
     {
       Session.set('friends', friends);
       Session.set('onlineCount', friends.length);
-      // console.log(friends.length);
-      // Marauder.updateFriends('onlineCount');
     }
   });
 
@@ -508,66 +628,27 @@ Template.onlineCounter.onlineCount = function() {
 // we use the onlineCounter to update Locations online status field
 //
 Template.onlineCounter.rendered = function() {
-  Marauder.debugString('Template.onlineCounter.rendered');
+  Marauder.log('Template.onlineCounter.rendered');
   $('#onlineCount').html(Session.get('onlineCount'));
 };
 
-// Meteor.Presence.state = function() {
-//   //
-//   // this is being called every second, or Meteor.Presence.PRESENCE_INTERVAL
-//   //
-//   if(Meteor.userId())
-//   {
-//     Marauder.updateLocation();
-//     // Marauder.debugString("Meteor.Presence.state");
-//   }
-//    if(Marauder.mode() == 'home')       Marauder.map.setCenter(Marauder.markers.myself.getPosition());
-//   return {
-//     online: Meteor.userId() !== null
-//     //,currentRoomId: Session.get('currentRoomId');
-//   };
-// };
-
-Handlebars.registerHelper('mode', function(button) {
-  return Marauder.mode() == button ? 'active' : '';
-});
-
-Handlebars.registerHelper('checked', function(e){
-    var c = localStorage.getItem(e);
-    console.log("checked "+e+"="+c);
-    return c == "checked" ? "checked" : "";
-});
-
-Handlebars.registerHelper('display_state', function(){
-  var updated = Session.get('updated');
-  var display = 'block';
-  var o = localStorage.getItem('overlay');
-  if(o === null)
-  {
-    $("#marauderControlText").css("color","#aaa");
-    localStorage.setItem('overlay', true);
-  } else {
-    if(o === 'false')
-    {
-      display = 'none';
-    } else
-      $("#marauderControlText").css("color","#aaa");
-  }
-  Marauder.debugString('Handlebars.registerHelper.display_state '+display);
-  return display;
-});
-
-Handlebars.registerHelper('email', function(user) {
-  return user.emails[0].address;
-});
-
 Template.marauder.events({
-  'click a.marauder-hint': function(e, tmpl) {
+  'click button.stalk': function(e, tmpl) {
+    if(Marauder.markers.selected)
+    {
+      Marauder.markers.myself.setPosition( Marauder.markers.selected.getPosition() );
+      Marauder.mc.redraw();
+    }
+  },
+  'click a.marauder-hint, click #overlay button.close': function(e, tmpl) {
     e.preventDefault();
-    $('#overlay').fadeOut(1000,function(){
-      localStorage.setItem('overlay', false);
-    });
+    $('#overlay').hide();
+    localStorage.setItem('overlay', false);
     $("#marauderControlText").css("color","black");
+  },
+  'click modal button.close': function(e, tmpl) {
+    Session.set('showModal', false);
+    Session.set('message','');
   },
   'mouseover a.marauder-hint' : function(e, tmpl) {
     $("#marauderControlText").css({fontSize:"50px", padding:"10px"});
@@ -575,37 +656,83 @@ Template.marauder.events({
   'mouseout a.marauder-hint' : function(e, tmpl) {
     $("#marauderControlText").css({fontSize:"12px", padding:"0px"});
   },
-  'click a.debug': function(e, tmpl) {
+  'click a.removefriendship': function(e, tmpl) {
     e.preventDefault();
-    Marauder.debug = !Marauder.debug;
-    Session.set('debug', Marauder.debug);
+    Meteor.call('removeFriendship', e.target.id, function(err, res){
+      if(err === undefined)
+      {
+        Session.set('updated', new Date().getTime());
+      }
+      else Session.set('friendRequestMessage', err.message);
+    });
+  },
+  'change input.friend-request': function(e, tmpl) {
+    e.preventDefault();
+    Meteor.call('friendRequest', e.target.value, function(err, res){
+      if(err)
+      {
+        Session.set('friendRequestMessage', err.message);
+      }
+      else
+      {
+        Session.set('friendRequestMessage', '');
+        $(e.target).val('');
+      }
+    });
+  },
+  'click a.approverequest': function(e, tmpl) {
+    e.preventDefault();
+    Meteor.call('approveRequest', e.target.id, function(err, res){
+      if(err) {
+        Session.set('friendRequestMessage', err.message);
+      }
+      else
+      {
+        Requests.remove(e.target.id);
+        Session.set('friendRequestMessage', '');
+      }
+    });
+  },
+  'click a.removerequest': function(e, tmpl) {
+    e.preventDefault();
+    Requests.remove({_id: e.target.id});
+  },
+  'click span.error': function(e, tmpl) {
+    e.preventDefault();
+    Session.set('friendRequestMessage', '');
   },
   'click a.showuserlocation': function(e,tmpl) {
     e.preventDefault();
+    Marauder.mode('browsing');
     Meteor.call('locateUser', e.target.id, function(err,user) {
       if(err === undefined)
       {
-        Marauder.mode('browsing');
         var c = Marauder.userLatLng(user.location);
-        // if(Marauder.markers.friends[e.target.id] === undefined)
-        // {
-        //   Marauder.markers.friends[e.target.id] = new google.maps.Marker({
-        //       position: c,
-        //       animation: google.maps.Animation.DROP,
-        //       draggable: false,
-        //       map: Marauder.map,
-        //       icon: 'friend.png',
-        //       title: user.emails[0].address+' '+e.target.id
-        //   });
-        // }
-        Marauder.map.setCenter(c);
-        // Marauder.setItems(Marauder.map);
-        Marauder.map.setZoom(14);
+        var b = Marauder.map.getBounds();
+        // determine if the the location is already on the map
+        if(! b.contains(c))
+        {
+          Marauder.setCenter(c, 'locateUser');
+          Marauder.setItems(Marauder.map);
+        }
+        else
+        {
+          Marauder.log(user._id+' already on the map');
+        }
+        // check the zoomlevel
+        if(Marauder.map.getZoom()<20)
+          Marauder.setZoom(21);
+
         Marauder.bounceMarker(e.target.id);
+
         Session.set('updated', new Date().getTime());
-        // Marauder.updateFriends('showuserlocation');
       }
-      else Marauder.debugString(err);
+      else
+      {
+        Marauder.log(err);
+        Session.set('message', err);
+        Marauder.showModal();
+      }
     });
   },
   'click a.updateFriends': function(e, templ) {
@@ -623,9 +750,20 @@ Template.marauder.events({
 });
 
 Template.buttons.events({
+  'click span.error': function(e, tmpl) {
+    Session.set('message', '');
+  },
   'click input.tracking': function(e, tmpl) {
     var c = $(e.target).attr("checked");
-    localStorage.setItem("tracking", c === undefined ? null : c );
+    Session.set("tracking", c ? true : false );
+    if(c)
+    {
+      Marauder.markers.myself.setOptions({draggable: false});
+      Marauder.updateLocation();
+    }
+    else
+      Marauder.markers.myself.setOptions({draggable: true});
+    Session.set('activeModeDescription', Marauder.activeModeDescription());
   },
   'click button.friends': function(e,tmpl) {
     Marauder.mode('friends');
@@ -633,6 +771,7 @@ Template.buttons.events({
     Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
       if(err === undefined && friends.length>0)
       {
+        Marauder.moveMap2MyselfRunning = true;
         var bounds = new google.maps.LatLngBounds();
         for(var f in friends)
         {
@@ -646,10 +785,14 @@ Template.buttons.events({
         // make the map fit
         Marauder.map.fitBounds(bounds);
         // make sure the new bounds are set so our subscribe picks them up
+        // update friends
+        // Marauder.updateFriends('onlineFriends');
+        Marauder.moveMap2MyselfRunning = false;
         Marauder.setItems(Marauder.map);
       }
       else Session.set('message','No friends online');
     });
+    Marauder.showModal();
   },
   'click button.browsing': function(e,tmpl) {
     Marauder.mode('browsing');
@@ -661,8 +804,8 @@ Template.buttons.events({
   },
   'click button.home' : function (e,tmpl) {
     // template data, if any, is available in 'this'
-    Marauder.moveMap2Myself();
     Marauder.mode('home');
+    Marauder.moveMap2Myself();
     Marauder.updateLocation();
   }
 });
@@ -670,22 +813,56 @@ Template.buttons.events({
 Deps.autorun(function() {
   var updated = Session.get('updated');
   var onlineCount = Session.get('onlineCount');
-  var boundary = localStorage.getItem('boundary');
+  var user = Meteor.user();
   // only do this if we have a current position
-  if(boundary !== null)
-  {
-    var b = JSON.parse(boundary);
-    // subscribe stories for current position
-    Marauder.locationsCursor = Meteor.subscribe('locations', b, function(x){
-      Marauder.debugString(Meteor.users.find().count()+' locations subscribed '+new Date().getTime());
-      Marauder.updateFriends('locations subscribed');
-    });
-
-  } else Marauder.debugString('deps boundary null');
   // subscribe to my own user record
   Meteor.subscribe('userData', function(){
-    Marauder.debugString('userData subscribed');
+    Marauder.log('userData subscribed');
   });
+
+  if(user)
+  {
+    if(Session.get('loggedIn') === false)
+    {
+      Session.set('loggedIn', true);
+      Marauder.log('autorun loggedIn true');
+      var c = Marauder.userLatLng(user.location);
+      localStorage.setItem('home', JSON.stringify(c));
+      Marauder.updateMyMarker(c, 'Myself '+user._id);
+    }
+
+    // Meteor.subscribe('friends', function(){
+    //   Marauder.log('subscribed to friends');
+    // });
+
+    var boundary = localStorage.getItem('boundary');
+    if(boundary)
+    {
+      // console.log(boundary);
+      var b = JSON.parse(boundary);
+      // subscribe stories for current position
+      Marauder.locationsCursor = Meteor.subscribe('locations', b, function(x){
+        Marauder.log(Meteor.users.find().count()+' locations subscribed '+new Date().getTime());
+        Marauder.updateFriends('locations subscribed');
+      });
+
+    } else Marauder.log('deps boundary null');
+
+    Meteor.subscribe('requests', function(){
+      Marauder.log('friend requests subscribed');
+    });
+  }
+  else
+  {
+    if(Session.get('loggedIn') === true)
+    {
+      Session.set('loggedIn', false);
+      Marauder.log('autorun loggedIn false');
+      Session.set('updated', new Date().getTime());
+    }
+    if(!Session.get('tracking'))
+      Session.set('tracking', true);
+  }
 });
 //
 // now observe changes
@@ -699,7 +876,18 @@ Meteor.users.find().observeChanges({
       if(Marauder.markers.friends[id] !== undefined)
       {
         Marauder.markers.friends[id].setPosition(Marauder.userLatLng(fields.location));
-        Marauder.debugString("observed changed "+id);
+        if(fields.profile)
+        Marauder.markers.friends[id].setIcon(fields.profile.online ? 'friend.png' : 'offline.png');
+        Marauder.log("observed changed "+id);
+      }
+    }
+    else
+    {
+      if(Marauder.markers.friends[id] !== undefined && fields.profile)
+      {
+        Marauder.log('changed '+id+' fields');
+        Marauder.log(fields);
+        Marauder.markers.friends[id].setIcon(fields.profile.online ? 'friend.png' : 'offline.png');
       }
     }
   },
@@ -719,7 +907,7 @@ Meteor.users.find().observeChanges({
           {
             var userName = fields.emails[0].address;
             if(userName === undefined) userName = 'unknown';
-            // Marauder.debugString('add marker for '+user.userName);
+            // Marauder.log('add marker for '+user.userName);
             var c = Marauder.userLatLng(fields.location);
             if(c)
             {
@@ -728,34 +916,44 @@ Meteor.users.find().observeChanges({
                   animation: google.maps.Animation.DROP,
                   draggable: false,
                   map: Marauder.map,
-                  icon: 'friend.png',
+                  icon: fields.profile.online ? 'friend.png' : 'offline.png',
                   title: userName+' '+id
               });
 
               google.maps.event.addListener(Marauder.markers.friends[id], 'click', Marauder.showClickedUser);
 
-              Marauder.debugString("observed added "+id);
+              Marauder.mc.addMarker(Marauder.markers.friends[id]);
+
+              Marauder.log("observed added "+id);
+
+              Session.set('updated', new Date().getTime());
             }
           }
           else
           {
             Marauder.markers.friends[id].setPosition(Marauder.userLatLng(fields.location));
+            Marauder.markers.friends[id].setIcon(fields.profile.online ? 'friend.png' : 'offline.png');
           }
       }
+    }
+    else
+    {
+      Marauder.log('added '+id+' fields');
+      Marauder.log(fields);
     }
   },
   removed: function(id) {
     if(Marauder.markers.friends[id] !== undefined)
     {
+      Marauder.mc.removeMarker(Marauder.markers.friends[id]);
       Marauder.markers.friends[id].setMap(null);
       delete(Marauder.markers.friends[id]);
-      Marauder.debugString("observed removed "+id);
+      Marauder.log("observed removed "+id);
       Session.set('message','');
+      Session.set('updated', new Date().getTime());
     }
   }
 });
 
 Meteor.startup(function(){
- if(localStorage.getItem('tracking') === null)
-    localStorage.setItem('tracking', false)
 });

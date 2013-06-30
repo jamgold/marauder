@@ -15,30 +15,39 @@
 </body>
 
 <template name="buttons">
-	<div class="topbuttons">
-	<div class=loginButtons>{{loginButtons align=left}}</div>
+	<div class="topbuttons top_of_map">
 	<div class="btn-group button-toggles" data-toggle="buttons-radio">
-	<button class="btn home {{mode 'home'}}" data-toggle="button" title="goto the current location of your browser/device and have marauder track you">Home</button>
-	<button class="btn browsing {{mode 'browsing'}}" data-toggle="button" title="Browse around">Browsing</button>
+	<button class="btn home {{getMode 'home'}}" data-toggle="button" title="goto the current location of your own marker">Home</button>
+	<button class="btn browsing {{getMode 'browsing'}}" data-toggle="button" title="Browse around">Browsing</button>
 	{{#if currentUser}}
-	<button class="btn friends {{mode 'friends'}}" data-toggle="button" title="Show all your friends online">Show Friends</button>
-	<button class="btn specify {{mode 'specify'}}" data-toggle="button" title="Instead of the current location, drag your map pin to the desired location">Specify</button>
-    <label class="checkbox tracking"> <input type="checkbox" class="tracking" {{checked "tracking"}}> Track</label>
+	<button class="btn friends {{getMode 'friends'}}" data-toggle="button" title="Show all your friends online">Show Friends</button>
+	<!--button class="btn specify {{getMode 'specify'}}" data-toggle="button" title="Instead of the current location, drag your map pin to the desired location">Specify</button-->
+    <label class="checkbox tracking" for="tracking"> <input type="checkbox" class="tracking" id="tracking" {{isChecked "tracking"}}> Track</label>
 	{{/if}}
 	</div>
-	<p>{{activeModeDescription}} <span class=error>{{message}}</span></p>
 	</div>
 </template>
 
+<template name="modal">
+	<modal class="top_of_map">
+		<button type="button" class="close">Close</button>
+		{{{activeModeDescription}}}
+		{{#if message}}
+		<div class=error>{{{message}}}</div>
+		{{/if}}
+	</modal>
+</template>
+
 <template name="marauder">
-	<div id="overlay" style="display:{{display_state}}">
+	{{#if showModal}}
+		{{>modal}}
+	{{/if}}
+	<div id="overlay" class="top_of_map" style="display:{{getDisplayState}}">
+		<button type="button" class="close">Close</button>
+		{{loginButtons align=left}}
 		<h2>Hi there Marauder!</h2>
 		{{#if currentUser}}
-		<ul class="friends">
-			{{#each friends}}
-				{{> friend}}
-			{{/each}}
-		</li>
+		{{>friends}}
 		{{else}}
 		<p>create an account to link up with your friends. You can always pop up this window by clicking on the <a href=# class="marauder-hint">Marauder control up top</a>.</p>
 		{{/if}}
@@ -46,11 +55,7 @@
 		{{#if currentUser}}
 		<a class="updateFriends">Update Friends</a>
 		{{/if}}
-		<a class="debug {{debugActive}}">debug</a>
 		</div>
-	</div>
-	<div class="console_log {{debugActive}}">
-		<ul class="console_log"/>
 	</div>
 	{{> onlineCounter}}
 </template>
@@ -59,9 +64,47 @@
 	<div class="reactive-hidden">{{onlineCount}}</div>
 </template>
 
-<template name="friend">
-	<li><a href="#" class="showuserlocation" title="locate this user on the map" id="{{_id}}">{{email this}}</a> {{profile.online}}</li>
+<template name="friends">
+	<label>Friend Request</label>
+	    <input type="text" class="friend-request" placeholder="Enter e-mail address …">
+	    <div class=error>{{message}}</div>
+	<div class="friends">
+	<table class="table table-striped table-hover">
+		<thead>
+		<tr>
+			<th>Friend</th>
+			<th>Action</th>
+		<tr>
+		</thead>
+		<tbody>
+		{{#each friends}}
+			{{> friend}}
+		{{/each}}
+		{{#each requests}}
+			{{> request}}
+		{{/each}}
+		</tbody>
+	</table>
+	</div>
 </template>
+
+<template name="friend">
+	<tr>
+		<td><a href="#" class="showuserlocation" title="locate this user on the map" id="{{_id}}">{{getEmail this}}</a></td>
+		<td><a href="#" class="removefriendship" title="remove friendship" id="{{_id}}">{{isFriend this}}</a></td>
+	</tr>
+</template>
+
+<template name="request">
+	<tr>		
+		<td>{{myOwnRequest this}}</td>
+		<td>
+			<a href="#" class="removerequest" id="{{_id}}">{{requestRemove this}}</a>
+			{{{requestApprove this}}}
+		</td>
+	</tr>
+</template>
+
 
 <template name="map">
 	{{#constant}}

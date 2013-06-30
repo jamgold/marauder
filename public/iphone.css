@@ -2,42 +2,17 @@ html,body {
 }
 
 #overlay {
-	position: absolute;
 	padding: 5px;
 	left: 5px;
-	top:40px;
-	width: 90%;
-	height: 80%;
-	z-index: 100;
-	border: 3px solid #bbb;
-	border-radius: 5px;
-	background-color: white;
+	width: 95%;
+	height: 95%;
 	font-size: 10px;
 }
 
 div.topbuttons {
-	width: 280px;
-	height: 100px;
-	bottom:10px;
 	font-size:10px;
 }
 
-div.console_log {
-	display:none;
-	position: absolute;
-	padding: 5px;
-	right: 10px;
-	bottom:10px;
-	width: 90%;
-	height: 20em;
-	z-index: 100;
-	border: 3px solid #bbb;
-	border-radius: 5px;
-	background-color: white;
-}
-div.console_log.active {
-	display:block;
-}
 div.links {
 	position: absolute;
 	bottom: 5px;
@@ -56,17 +31,6 @@ ul.friends {
 }
 ul.friends li {
 	line-height: 12px;
-}
-ul.console_log {
-	border: 1px solid #aaa;
-	font-size: 10px;
-	overflow: auto;
-	height: 95%;
-	margin: 10px 0;
-}
-ul.console_log li {
-	margin:0;
-	line-height: 10px;
 }
 a.debug.active {
 	font-weight: bold;
