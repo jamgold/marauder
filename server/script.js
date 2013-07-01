@@ -34,7 +34,8 @@ if(true || this.userId)
   //
   // this will add all my online friends based on boundary
   //
-  Meteor.publish("locations", function(boundary) {
+  Meteor.publish("locations", function(boundary, onlineonly) {
+    onlineonly = onlineonly || false;
     // boundary contains bound.northEast and bound.southWest
     if(this.userId && boundary !== null && boundary.ne.jb !== undefined)
     {
@@ -55,7 +56,7 @@ if(true || this.userId)
       };
       // , "profile.online": true
       // add friends query
-      query = _.extend(query, Marauder.friendQuery(this.userId));
+      query = _.extend(query, Marauder.friendQuery(this.userId, onlineonly));
       // $or does not work with $geoWithin
       // var query = {$or:[ {location: { $geoWithin: {$box: box} }}, {userId: this.userId}]};
       Marauder.log(JSON.stringify(query));

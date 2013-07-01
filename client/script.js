@@ -10,6 +10,7 @@ Session.setDefault('showModal', false);
 Session.setDefault('mode', 'home');
 Session.setDefault('loggedIn', false);
 Session.setDefault('tracking', false);
+Session.setDefault('onlineonly', false);
 
 _.extend(Marauder, {
   debug: localStorage.getItem('debug') == 'true' ? true: false,
@@ -42,7 +43,7 @@ _.extend(Marauder, {
     var self = this;
     mode = mode || self.mode();
     var tracking = Session.get('tracking');
-
+    var onlineonly = Session.get('onlineonly') ? '<b>online</b>' : '';
     var desc = mode+' is an unknown mode';
     switch(mode)
     {
@@ -54,7 +55,7 @@ _.extend(Marauder, {
           desc+= '<br>Drag your marker to where you want it to appear for your friends to see';
       break;
       case 'friends':
-        desc = 'Showing all your online friends on the map';
+        desc = 'Showing all your '+onlineonly+' friends on the map';
         if(!tracking) desc+= '<br>Drag your marker to where you want it to appear for your friends to see';
       break;
       case 'browsing':
@@ -575,12 +576,17 @@ Template.marauder.rendered = function() {
 
 Template.friends.friends = function() {
   var updated = Session.get('updated');
+  var onlineonly = Session.get('onlineonly');
   Marauder.log('Template.friends.friends');
-  Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
-    if(err === undefined && friends.length>0)
+  Meteor.call('myFriends', Meteor.userId(), onlineonly, function(err, friends){
+    if(err === undefined)
     {
       Session.set('friends', friends);
       // Marauder.updateFriends('Template.friends.friends');
+    }
+    else
+    {
+      console.log(err);
     }
   });
   return Session.get('friends');
@@ -614,7 +620,7 @@ Template.modal.activeModeDescription = function() {
 };
 
 Template.onlineCounter.onlineCount = function() {
-  Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
+  Meteor.call('myFriends', Meteor.userId(),false, function(err, friends){
     if(err === undefined)
     {
       Session.set('friends', friends);
@@ -649,6 +655,10 @@ Template.marauder.events({
   'click modal button.close': function(e, tmpl) {
     Session.set('showModal', false);
     Session.set('message','');
+  },
+  'click input.onlineonly': function(e, tmpl) {
+    Session.set('onlineonly', !Session.get('onlineonly'));
+    Session.set("activeModeDescription", Marauder.activeModeDescription() );
   },
   'mouseover a.marauder-hint' : function(e, tmpl) {
     $("#marauderControlText").css({fontSize:"50px", padding:"10px"});
@@ -736,8 +746,9 @@ Template.marauder.events({
     });
   },
   'click a.updateFriends': function(e, templ) {
+    var onlineonly = Session.get('onlineonly');
     e.preventDefault();
-    Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
+    Meteor.call('myFriends', Meteor.userId(), onlineonly, function(err, friends){
       if(err === undefined)
       {
         Session.set('friends', friends);
@@ -766,9 +777,10 @@ Template.buttons.events({
     Session.set('activeModeDescription', Marauder.activeModeDescription());
   },
   'click button.friends': function(e,tmpl) {
+    var onlineonly = Session.get('onlineonly');
     Marauder.mode('friends');
     Marauder.markers.myself.setOptions({draggable: false});
-    Meteor.call('onlineFriends', Meteor.userId(), function(err, friends){
+    Meteor.call('myFriends', Meteor.userId(), onlineonly, function(err, friends){
       if(err === undefined && friends.length>0)
       {
         Marauder.moveMap2MyselfRunning = true;
@@ -786,7 +798,7 @@ Template.buttons.events({
         Marauder.map.fitBounds(bounds);
         // make sure the new bounds are set so our subscribe picks them up
         // update friends
-        // Marauder.updateFriends('onlineFriends');
+        // Marauder.updateFriends('myFriends');
         Marauder.moveMap2MyselfRunning = false;
         Marauder.setItems(Marauder.map);
       }
@@ -812,6 +824,7 @@ Template.buttons.events({
 
 Deps.autorun(function() {
   var updated = Session.get('updated');
+  var onlineonly = Session.get('onlineonly');
   var onlineCount = Session.get('onlineCount');
   var user = Meteor.user();
   // only do this if we have a current position
@@ -841,7 +854,7 @@ Deps.autorun(function() {
       // console.log(boundary);
       var b = JSON.parse(boundary);
       // subscribe stories for current position
-      Marauder.locationsCursor = Meteor.subscribe('locations', b, function(x){
+      Marauder.locationsCursor = Meteor.subscribe('locations', b, onlineonly, function(x){
         Marauder.log(Meteor.users.find().count()+' locations subscribed '+new Date().getTime());
         Marauder.updateFriends('locations subscribed');
       });

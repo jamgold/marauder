@@ -46,7 +46,7 @@
 		<button type="button" class="close">Close</button>
 		{{#if currentUser}}
 		{{loginButtons align=left}}
-		<h2>Hi there Marauder!</h2>
+		<h2>Manage Mischief!</h2>
 		{{>friends}}
 		{{else}}
 		<h2>Hi there Marauder!</h2>
@@ -72,6 +72,8 @@
 	    <input type="text" class="friend-request" placeholder="Enter e-mail address …">
 	    <div class=error>{{message}}</div>
 	<div class="friends">
+		{{#if doWeHaveFriends}}
+	    <label class="checkbox onlineonly" for="onlineonly"> <input type="checkbox" class="onlineonly" id="onlineonly" {{isChecked "onlineonly"}}> Online Friends Only</label>
 	<table class="table table-striped table-hover">
 		<thead>
 		<tr>
@@ -88,6 +90,9 @@
 		{{/each}}
 		</tbody>
 	</table>
+	{{else}}
+	<h4>Don't be a troglodyte, add some friends by sending them a Friend Request.</h4><h4>You can only add friends that are already in the system, however. So if you enter a friends e-mail address and it comes back to tell you it doesn't find that person, tell them to sign up.</h4>
+	{{/if}}
 	</div>
 </template>
 

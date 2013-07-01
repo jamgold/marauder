@@ -2,6 +2,10 @@ Handlebars.registerHelper('getMode', function(button) {
   return Session.get('mode') == button ? 'active' : '';
 });
 
+Handlebars.registerHelper('doWeHaveFriends', function(button) {
+  return (Requests.find().count() > 0 ) || (Meteor.users.find().count() >= 1);
+});
+
 Handlebars.registerHelper('isChecked', function(e){
     var c = Session.get(e);
     return c ? "checked" : "";
