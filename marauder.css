@@ -47,16 +47,6 @@ modal {
 	height: 350px;
 }
 
-div.loginButtons {
-	float: left;
-	font-size: 12px;
-	padding-right: 5px;
-}
-
-div.login-link-and-dropdown-list {
-	font-size: 12px;
-}
-
 div.reactive-hidden {
 	display: none;
 }
@@ -96,4 +86,10 @@ label.tracking {
 }
 a.updateFriends {
 	font-size: 11px;
+}
+a.showuserlocation.offline {
+	color: #aaa;
+}
+a.showuserlocation.online {
+	color: green;
 }

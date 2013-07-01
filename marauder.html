@@ -44,12 +44,15 @@
 	{{/if}}
 	<div id="overlay" class="top_of_map" style="display:{{getDisplayState}}">
 		<button type="button" class="close">Close</button>
+		{{#if currentUser}}
 		{{loginButtons align=left}}
 		<h2>Hi there Marauder!</h2>
-		{{#if currentUser}}
 		{{>friends}}
 		{{else}}
-		<p>create an account to link up with your friends. You can always pop up this window by clicking on the <a href=# class="marauder-hint">Marauder control up top</a>.</p>
+		<h2>Hi there Marauder!</h2>
+		<p>{{loginButtons}} to link up with your friends. You can always pop up this window by clicking on the <a href=# class="marauder-hint">Marauder control up top</a>.</p>
+		<p>This little application has been developed with the help of <a href=http://meteor.com>Meteor.com</a> and is purely for entertainment purposes and to demonstrate certain real-time characteristics of the platform.</p>
+		<p>At no time should Meteor.com be held reliable for any mischief; you alone are supposed to manage that.</p>
 		{{/if}}
 		<div class="links">
 		{{#if currentUser}}
@@ -90,8 +93,8 @@
 
 <template name="friend">
 	<tr>
-		<td><a href="#" class="showuserlocation" title="locate this user on the map" id="{{_id}}">{{getEmail this}}</a></td>
-		<td><a href="#" class="removefriendship" title="remove friendship" id="{{_id}}">{{isFriend this}}</a></td>
+		<td><a href="#" class="showuserlocation {{getOnlineStatus this}}" title="locate this {{getOnlineStatus this}} user on the map" id="{{_id}}">{{getEmail this}}</a></td>
+		<td><a href="#" class="removefriendship" title="remove friendship; you will no longer see each other on the map" id="{{_id}}">{{isFriend this}}</a></td>
 	</tr>
 </template>
 
@@ -99,7 +102,7 @@
 	<tr>		
 		<td>{{myOwnRequest this}}</td>
 		<td>
-			<a href="#" class="removerequest" id="{{_id}}">{{requestRemove this}}</a>
+			<a href="#" class="removerequest" id="{{_id}}" title="remove the friend request">{{requestRemove this}}</a>
 			{{{requestApprove this}}}
 		</td>
 	</tr>

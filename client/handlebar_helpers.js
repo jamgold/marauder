@@ -21,7 +21,7 @@ Handlebars.registerHelper('isFriend', function(user){
 });
 
 Handlebars.registerHelper('requestApprove', function(r) {
-  return Meteor.userId() != r.requester.id ? "<a href=# class=approverequest id="+r._id+">approve</a>" : "";
+  return Meteor.userId() != r.requester.id ? "<a href=# class=approverequest title='approve this friend request; you will see eachother on the map' id="+r._id+">approve</a>" : "";
 });
 
 Handlebars.registerHelper('requestRemove', function(r) {
@@ -36,7 +36,8 @@ Handlebars.registerHelper('getDisplayState', function(){
   var updated = Session.get('updated');
   var display = 'block';
   var o = localStorage.getItem('overlay');
-  if(o === null)
+  var user = Meteor.user();
+  if(user === null || o === null)
   {
     $("#marauderControlText").css("color","#aaa");
     localStorage.setItem('overlay', true);
@@ -53,4 +54,8 @@ Handlebars.registerHelper('getDisplayState', function(){
 
 Handlebars.registerHelper('getEmail', function(user) {
   return user.emails[0].address;
+});
+
+Handlebars.registerHelper('getOnlineStatus', function(user){
+  return user.profile && user.profile.online ? "online" : "offline";
 });
