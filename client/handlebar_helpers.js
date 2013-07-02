@@ -3,7 +3,9 @@ Handlebars.registerHelper('getMode', function(button) {
 });
 
 Handlebars.registerHelper('doWeHaveFriends', function(button) {
-  return (Requests.find().count() > 0 ) || (Meteor.users.find().count() >= 1);
+  var user = Meteor.user();
+  if(user.friends === undefined) user.friends = [];
+  return (Requests.find().count() > 0 ) || (user.friends.length > 0);
 });
 
 Handlebars.registerHelper('isChecked', function(e){
@@ -57,7 +59,9 @@ Handlebars.registerHelper('getDisplayState', function(){
 });
 
 Handlebars.registerHelper('getEmail', function(user) {
-  return user.emails[0].address;
+  if(user && user.emails !== undefined && user.emails.length>0)
+    return user.emails[0].address;
+  else return 'none';
 });
 
 Handlebars.registerHelper('getOnlineStatus', function(user){
