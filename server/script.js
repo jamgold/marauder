@@ -4,10 +4,8 @@ Meteor.startup(function () {
   // code to run on server at startup
   //Accounts.emailTemplates.siteName = "test.ma.rauder.net:4000";
   Accounts.emailTemplates.siteName = "ma.rauder.net";
-  Accounts.emailTemplates.from = "webmaster@cotren.net";
-
+  // Accounts.emailTemplates.from = "webmaster@cotren.net";
   Meteor.users._ensureIndex('location', '2dsphere');
-
 });
 
 //
@@ -15,6 +13,7 @@ Meteor.startup(function () {
 //
 if(true || this.userId)
 {
+  // my own record
   Meteor.publish("userData", function () {
     return Meteor.users.find(
       {_id: this.userId},
@@ -22,14 +21,21 @@ if(true || this.userId)
     );
   });
 
-  // Meteor.publish("friends", function() {
-  //   var friends = Meteor.users.find(Marauder.friendQuery(this.userId), {'emails': 1,'timestamp':1,profile:1});
-  //   Marauder.log(friends.count()+' users published');
-  //   return friends;
-  // });
-
+  Meteor.publish("friends", function() {
+    var friends = Meteor.users.find(Marauder.friendQuery(this.userId), {'emails': 1,'timestamp':1,profile:1});
+    Marauder.log(friends.count()+' users published');
+    return friends;
+  });
+  //
+  // friend requests
+  //
   Meteor.publish("requests", function() {
-    return Requests.find({ $or: [{"requester.id": this.userId},{"friend.id": this.userId}]});
+    if(this.userId)
+    {
+      // console.log("publish requester.id/friend.id = "+this.userId);
+      return Requests.find({ $or: [{"requester.id": this.userId},{"friend.id": this.userId}]});
+    }
+    return null;
   });
   //
   // this will add all my online friends based on boundary
@@ -59,14 +65,14 @@ if(true || this.userId)
       query = _.extend(query, Marauder.friendQuery(this.userId, onlineonly));
       // $or does not work with $geoWithin
       // var query = {$or:[ {location: { $geoWithin: {$box: box} }}, {userId: this.userId}]};
-      Marauder.log(JSON.stringify(query));
+      // console.log(JSON.stringify(query));
       var locations = Meteor.users.find(query, {'emails': 1,'timestamp': 1,location:1,profile: 1});
       Marauder.log(locations.count()+' users published');
       return locations;
     }
     else
     {
-      return boundary;
+      return null;
     }
   });
 }
