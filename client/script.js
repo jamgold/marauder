@@ -20,7 +20,6 @@ _.extend(Marauder, {
   markers: {
     myself: undefined,
     selected: undefined,
-    infowindow: {},
     friends: {}
   },
   toggleDebug: function() {
@@ -166,80 +165,79 @@ _.extend(Marauder, {
 
       Marauder.showModal();
   },
-  updateFriends: function(who) {
+  updateMarkers: function(who) {
     var self = this;
     if(self.map !== undefined)
     {
-      self.log("Marauder.updateFriends from "+who);
+      self.log("Marauder.updateMarkers from "+who);
       var visibleMarkers = {};
       var uid = Meteor.userId();
       var onlineonly = Session.get('onlineonly');
-      Meteor.users.find().forEach(function(user){
-        // skip over myself (should be filtered out on the server)
-        if(user._id != uid)
-        {
-          if(onlineonly && user.profile && !user.profile.online)
+      var query = onlineonly ? {"profile.online": true} : {};
+      var b = self.map.getBounds();
+      // don't even bother if we don't have bounds
+      if(b !== undefined)
+      {
+        Meteor.users.find(query).forEach(function(user){
+          // skip over myself (should be filtered out on the server)
+          if(user._id != uid)
           {
-
-          }
-          else
-          {
-            visibleMarkers[user._id] = true;
-            var userName = self.getUserName(user);
-            if(userName === undefined) userName = 'unknown';
-            // do we have a marker already
-            if(self.markers.friends[user._id] === undefined)
+            var c = self.userLatLng(user.location);
+            // only add the marker if it is on the map
+            if( b.contains(c) )
             {
-              self.log('add marker for '+userName);
-              var c = self.userLatLng(user.location);
-              self.markers.friends[user._id] = new google.maps.Marker({
-                  position: c,
-                  animation: google.maps.Animation.DROP,
-                  draggable: false,
-                  map: self.map,
-                  icon: user.profile.online ? 'friend.png' : 'offline.png',
-                  title: userName+' '+user._id
-              });
-              self.mc.addMarker(self.markers.friends[user._id]);
-              // if(self.markers.infowindow[user._id] === undefined)
-              //   self.markers.infowindow[user._id] = new google.maps.InfoWindow({
-              //       content: userName+'<br>'+user._id
-              //   });
+                  visibleMarkers[user._id] = true;
+                  var userName = self.getUserName(user);
+                  if(userName === undefined) userName = 'unknown';
+                  // do we have a marker already
+                  if(self.markers.friends[user._id] === undefined)
+                  {
+                    self.log('add marker for '+userName);
+                    self.markers.friends[user._id] = new google.maps.Marker({
+                        position: c,
+                        animation: google.maps.Animation.DROP,
+                        draggable: false,
+                        map: self.map,
+                        icon: user.profile.online ? 'friend.png' : 'offline.png',
+                        title: userName+' '+user._id
+                    });
+                    self.mc.addMarker(self.markers.friends[user._id]);
 
-              google.maps.event.addListener(self.markers.friends[user._id], 'click', self.showClickedUser);
+                    google.maps.event.addListener(self.markers.friends[user._id], 'click', self.showClickedUser);
+                  }
+                  else
+                  {
+                    // self.log('update marker for '+userName);
+                    self.markers.friends[user._id].setPosition(self.userLatLng(user.location));
+                    self.markers.friends[user._id].setIcon(user.profile.online ? 'friend.png' : 'offline.png');
+                  }
+              }
             }
             else
             {
-              // self.log('update marker for '+userName);
-              self.markers.friends[user._id].setPosition(self.userLatLng(user.location));
-              self.markers.friends[user._id].setIcon(user.profile.online ? 'friend.png' : 'offline.png');
+              // check if I myself are in the friends markers and remvoe
+              //
+              if(self.markers.friends[user._id] !== undefined)
+              {
+                  self.mc.removeMarker(self.markers.friends[user._id]);
+                  self.markers.friends[user._id].setMap(null);
+                  delete(self.markers.friends[user._id]);
+                  self.log("Marauder.updateMarkers removed myself from friends");
+              }
             }
-          }
-        }
-        else
-        {
-            if(self.markers.friends[user._id] !== undefined)
-            {
-                self.mc.removeMarker(self.markers.friends[user._id]);
-                self.markers.friends[user._id].setMap(null);
-                delete(self.markers.friends[user._id]);
-                self.log("Marauder.updateFriends removed myself from friends");
-            }
-        }
-      });
-
-      if(localStorage.getItem('clearInvisibleMarkers') !== null)
+        });
+      }
+      //
+      // remove all markers not visible
+      //
+      for(var f in self.markers.friends)
       {
-        // Marauder.log(visibleMarkers);
-        for(var f in self.markers.friends)
+        if(visibleMarkers[f] === undefined)
         {
-          if(visibleMarkers[f] === undefined)
-          {
-            self.mc.removeMarker(self.markers.friends[f]);
-            self.markers.friends[f].setMap(null);
-            delete(self.markers.friends[f]);
-            self.log("updateFriends removed "+f);
-          }
+          self.mc.removeMarker(self.markers.friends[f]);
+          self.markers.friends[f].setMap(null);
+          delete(self.markers.friends[f]);
+          self.log("updateMarkers removed "+f);
         }
       }
 
@@ -324,7 +322,7 @@ _.extend(Marauder, {
       self.markers.myself.setPosition(coordinates);
       self.markers.myself.setOptions({title: title});
     }
-    else if(google !== undefined)
+    else if(self.map !== undefined)
     {
       self.markers.myself = new google.maps.Marker({
         position: coordinates,
@@ -555,7 +553,7 @@ Template.marauder.rendered = function() {
     Marauder.log('Template.marauder.rendered initialize');
 
     Marauder.initialize();
-    Marauder.updateFriends('Template.marauder.rendered');
+    Marauder.updateMarkers('Template.marauder.rendered');
   }
   else
   {
@@ -572,7 +570,7 @@ Template.marauder.rendered = function() {
     // else Marauder.updateLocation();
     if(Marauder.mode() == 'home') Marauder.moveMap2Myself();
   }
-  // Marauder.updateFriends('Template.marauder.rendered');
+  // Marauder.updateMarkers('Template.marauder.rendered');
   // Marauder.log(this);
   // if(false && user !== null)
   // {
@@ -758,7 +756,7 @@ Template.marauder.events({
     var onlineonly = Session.get('onlineonly');
     e.preventDefault();
     Marauder.updateFriendsList(onlineonly);
-    Marauder.updateFriends('button');
+    Marauder.updateMarkers('button');
   }
 });
 
@@ -800,7 +798,7 @@ Template.buttons.events({
         Marauder.map.fitBounds(bounds);
         // make sure the new bounds are set so our subscribe picks them up
         // update friends
-        // Marauder.updateFriends('myFriends');
+        // Marauder.updateMarkers('myFriends');
         Marauder.moveMap2MyselfRunning = false;
         Marauder.setItems(Marauder.map);
       }
@@ -936,6 +934,7 @@ Requests.find().observeChanges({
 
 Meteor.startup(function(){
 });
+
 Deps.autorun(function() {
   var friends = Session.get('friends');
   var updated = Session.get('updated');
@@ -968,8 +967,7 @@ Deps.autorun(function() {
       // subscribe stories for current position
       Marauder.locationsCursor = Meteor.subscribe('locations', b, onlineonly, function(x){
         Marauder.log(Meteor.users.find().count()+' locations subscribed '+new Date().getTime());
-        Marauder.updateFriends('locations subscribed');
-        // Marauder.updateFriendsList(onlineonly);
+        Marauder.updateMarkers('locations subscribed');
       });
 
     } else Marauder.log('deps boundary null');
