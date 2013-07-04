@@ -9,7 +9,9 @@
 </head>
 
 <body>
-	{{>map}}
+	{{#constant}}
+	  <div id="marauder_map"></div>
+	{{/constant}}
 	{{>buttons}}
 	{{>marauder}}
 </body>
@@ -111,11 +113,4 @@
 			{{{requestApprove this}}}
 		</td>
 	</tr>
-</template>
-
-
-<template name="map">
-	{{#constant}}
-	  <div id="marauder_map"></div>
-	{{/constant}}
 </template>
