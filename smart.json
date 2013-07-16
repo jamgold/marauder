@@ -1,6 +1,9 @@
 {
   "packages": {
     "jquery-ui-bootstrap": {},
-    "user-status": {}
+    "user-status": {},
+    "event-hooks": {},
+    "observatory": {},
+    "offline-data": {}
   }
 }

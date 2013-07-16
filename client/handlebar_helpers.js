@@ -38,17 +38,18 @@ Handlebars.registerHelper('myOwnRequest', function(r) {
   return Meteor.userId() == r.requester.id ? r.friend.email : r.requester.email;
 });
 
-Handlebars.registerHelper('getDisplayState', function(){
-  var updated = Session.get('updated');
+Handlebars.registerHelper('showOverlay', function(){
+  // var updated = Session.get('updated');
+  // var ov = Session.get('overlay');
   var display = 'block';
-  var o = localStorage.getItem('overlay');
+  var o = Marauder.config.overlay;
   var user = Meteor.user();
   if(user === null || o === null)
   {
     $("#marauderControlText").css("color","#aaa");
-    localStorage.setItem('overlay', true);
+    Marauder.conf('overlay', true);
   } else {
-    if(o === 'false')
+    if(o === 'false' || o === false)
     {
       display = 'none';
     } else

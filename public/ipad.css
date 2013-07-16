@@ -1,3 +1,8 @@
+html, body {
+	-webkit-user-select: none;
+	background: url(/ipad.png) 0 0 no-repeat;
+}
+
 #overlay {
 	left: 50px;
 	bottom:10px;

@@ -54,8 +54,8 @@ div.reactive-hidden {
 div.button-toggles {
 	
 }
-input.pressed {
-	background-color: red;
+input.friend-request {
+	/*display: none;*/
 }
 /*#login-dropdown-list {
 	position: relative;
@@ -69,10 +69,11 @@ input.pressed {
 div.links {
 	position: absolute;
 	bottom: 5px;
+	width: 98%;
 }
 div.friends {
 	overflow: auto;
-	height: 200px;
+	height: 170px;
 	/*padding:0 20px;*/
 	/*margin:0;*/
 	font-size: 12px;
@@ -92,4 +93,7 @@ a.showuserlocation.offline {
 }
 a.showuserlocation.online {
 	color: green;
+}
+#userCount {
+	display: none;
 }

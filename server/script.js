@@ -1,5 +1,12 @@
-Marauder.debug = false;
-Marauder.x = true;
+Marauder.config.debug = false;
+
+// Meteor.AppCache.config({
+//   chrome: false,
+//   firefox: true,
+//   ie: false,
+//   mobileSafari: true,
+//   safari: true
+// });
 
 Meteor.startup(function () {
   // code to run on server at startup
@@ -19,7 +26,7 @@ Meteor.publish("userData", function () {
   return Meteor.users.find(
     {_id: this.userId},
     {
-      fields: {'emails': 1,'location':1,'friends':1,'profile':1}
+      fields: {'emails': 1,'location':1,'friends':1,'profile':1,'tracking':1,'onlineonly':1}
     }
   );
 });
@@ -51,7 +58,7 @@ Meteor.publish("requests", function() {
 Meteor.publish("locations", function(boundary, onlineonly) {
   onlineonly = onlineonly || false;
   // boundary contains bound.northEast and bound.southWest
-  if(this.userId && boundary !== null && boundary.ne.jb !== undefined)
+  if(this.userId && boundary !== null && boundary.ne.jb !== undefined && boundary.ne.jb !== null)
   {
     var myself = this.userId;
     //
@@ -88,7 +95,6 @@ Meteor.publish("locations", function(boundary, onlineonly) {
     return null;
   }
 });
-
 
 Requests.allow({
   remove: function(userId, document) {
@@ -142,3 +148,12 @@ Meteor.methods({
     }
   }
 });
+
+Hooks.onLoggedOut = function (userId) {
+  var u = Meteor.users.findOne({_id: userId});
+  if(u)
+  {
+    console.log('Logged out user '+userId+'. Number of login tokens: '+u.services.resume.loginTokens.length);
+    // Meteor.users.update({_id: userId},{$set:{"services.resume.loginTokens":[]}});
+  }
+};
